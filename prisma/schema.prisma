@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────
+
+enum OnlineStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum Theme {
+  LIGHT
+  DARK
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum StoryType {
+  TEXT
+  IMAGE
+}
+
+// ── Authentication ─────────────────────────────────────
+
+model VerificationCode {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  code        String
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([phoneNumber, expiresAt])
+  @@map("verification_codes")
+}
+
+// ── User ───────────────────────────────────────────────
+
+model User {
+  id              String       @id @default(cuid())
+  phoneNumber     String       @unique
+  firstName       String
+  lastName        String?
+  profileImageUrl String?
+  onlineStatus    OnlineStatus @default(OFFLINE)
+  lastSeenAt      DateTime     @default(now())
+  theme           Theme        @default(LIGHT)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
+  messagesSent         Message[]      @relation("MessageSender")
+  messageReads         MessageRead[]
+  reactions            MessageReaction[]
+  stories              Story[]        @relation("StoryAuthor")
+  storyViews           StoryView[]
+
+  @@index([onlineStatus])
+  @@map("users")
+}
+
+// ── Conversations ──────────────────────────────────────
+
+model Conversation {
+  id            String   @id @default(cuid())
+  user1Id       String
+  user1         User     @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id       String
+  user2         User     @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, lastMessageAt])
+  @@index([user2Id, lastMessageAt])
+  @@map("conversations")
+}
+
+// ── Messages ───────────────────────────────────────────
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  type           MessageType @default(TEXT)
+  content        String      @db.Text
+  imageUrl       String?
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  fileMimeType   String?
+  isEdited       Boolean     @default(false)
+  editedAt       DateTime?
+  isDeleted      Boolean     @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  reads     MessageRead[]
+  reactions MessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@map("message_reactions")
+}
+
+// ── Stories ─────────────────────────────────────────────
+
+model Story {
+  id        String    @id @default(cuid())
+  authorId  String
+  author    User      @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  type      StoryType
+  content   String?   @db.Text
+  imageUrl  String?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  views StoryView[]
+
+  @@index([authorId, expiresAt])
+  @@index([expiresAt])
+  @@map("stories")
+}
+
+model StoryView {
+  id       String   @id @default(cuid())
+  storyId  String
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer   User     @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
+  @@unique([storyId, viewerId])
+  @@map("story_views")
+}
