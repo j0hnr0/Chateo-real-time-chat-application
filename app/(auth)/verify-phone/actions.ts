@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getTwilio, getTwilioFromNumber } from "@/lib/twilio";
-import { isValidE164, generateVerificationCode } from "@/lib/validation";
+import { getTwilio, getVerifyServiceSid } from "@/lib/twilio";
+import { isValidE164 } from "@/lib/validation";
 
 interface SendCodeResult {
   success: boolean;
@@ -45,23 +45,22 @@ export async function sendVerificationCode(
       };
     }
 
-    const code = generateVerificationCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
 
     await prisma.verificationCode.create({
       data: {
         phoneNumber: trimmed,
-        code,
         expiresAt,
       },
       select: { id: true },
     });
 
     const twilioClient = getTwilio();
-    await twilioClient.messages.create({
+    const serviceSid = getVerifyServiceSid();
+
+    await twilioClient.verify.v2.services(serviceSid).verifications.create({
       to: trimmed,
-      from: getTwilioFromNumber(),
-      body: `Your Chateo verification code is: ${code}. It expires in ${CODE_EXPIRY_MINUTES} minutes.`,
+      channel: "sms",
     });
 
     return { success: true };

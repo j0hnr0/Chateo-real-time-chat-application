@@ -17,10 +17,10 @@ export function getTwilio() {
   return client;
 }
 
-export function getTwilioFromNumber(): string {
-  const from = process.env.TWILIO_PHONE_NUMBER;
-  if (!from) {
-    throw new Error("Missing TWILIO_PHONE_NUMBER");
+export function getVerifyServiceSid(): string {
+  const sid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (!sid) {
+    throw new Error("Missing TWILIO_VERIFY_SERVICE_SID");
   }
-  return from;
+  return sid;
 }

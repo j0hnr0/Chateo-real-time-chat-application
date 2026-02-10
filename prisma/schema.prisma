@@ -34,10 +34,8 @@ enum StoryType {
 model VerificationCode {
   id          String   @id @default(cuid())
   phoneNumber String
-  code        String
-  expiresAt   DateTime
   verified    Boolean  @default(false)
-  attempts    Int      @default(0)
+  expiresAt   DateTime
   createdAt   DateTime @default(now())
 
   @@index([phoneNumber, expiresAt])
