@@ -23,6 +23,8 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - **Tailwind CSS v4** via PostCSS
 - **Prisma 7** ORM + **PostgreSQL**
 - **Geist** font family (Sans + Mono)
+- **React Hook Form** for client-side form state and validation
+- **TanStack React Query** for server state management and data fetching
 - **Jest 30** + **Testing Library** (React, jest-dom, user-event) with jsdom environment
 
 ## Architecture
