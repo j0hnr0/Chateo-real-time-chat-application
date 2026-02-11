@@ -1,10 +1,14 @@
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import VerifyCodePage from "../page";
 
 const mockGet = jest.fn();
+const mockPush = jest.fn();
+
 jest.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: mockGet }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("../actions", () => ({
@@ -16,6 +20,15 @@ const { verifyCode, resendCode } = jest.requireMock("../actions") as {
   verifyCode: jest.Mock;
   resendCode: jest.Mock;
 };
+
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+}
 
 describe("VerifyCodePage", () => {
   beforeEach(() => {
@@ -30,7 +43,7 @@ describe("VerifyCodePage", () => {
 
   it("renders fallback when no phone number is provided", () => {
     mockGet.mockReturnValue(null);
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     expect(screen.getByText("No phone number provided.")).toBeInTheDocument();
     expect(
@@ -39,7 +52,7 @@ describe("VerifyCodePage", () => {
   });
 
   it("renders code input, heading, and masked phone number", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     expect(
       screen.getByRole("heading", { name: /enter verification code/i })
@@ -53,7 +66,7 @@ describe("VerifyCodePage", () => {
 
   it("renders masked phone number correctly", () => {
     mockGet.mockReturnValue("+12125551234");
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     // +12125551234 has 12 chars, masked = start(2) + stars(6) + end(4)
     expect(screen.getByText(/\+1\*{6}1234/)).toBeInTheDocument();
@@ -61,7 +74,7 @@ describe("VerifyCodePage", () => {
 
   it("only allows numeric input in code field", async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const input = screen.getByLabelText("Verification code");
     await user.type(input, "12ab34cd56ef");
@@ -70,7 +83,7 @@ describe("VerifyCodePage", () => {
   });
 
   it("disables verify button when code is less than 6 digits", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const button = screen.getByRole("button", { name: /verify/i });
     expect(button).toBeDisabled();
@@ -78,7 +91,7 @@ describe("VerifyCodePage", () => {
 
   it("enables verify button when code is 6 digits", async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const input = screen.getByLabelText("Verification code");
     await user.type(input, "123456");
@@ -87,11 +100,11 @@ describe("VerifyCodePage", () => {
     expect(button).toBeEnabled();
   });
 
-  it("displays success message on successful verification", async () => {
+  it("redirects to setup-profile on successful verification", async () => {
     verifyCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const input = screen.getByLabelText("Verification code");
     await user.type(input, "123456");
@@ -99,7 +112,9 @@ describe("VerifyCodePage", () => {
     const button = screen.getByRole("button", { name: /verify/i });
     await user.click(button);
 
-    expect(await screen.findByText("Phone verified!")).toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledWith(
+      "/setup-profile?phone=%2B12125551234"
+    );
   });
 
   it("displays error message on failed verification", async () => {
@@ -109,7 +124,7 @@ describe("VerifyCodePage", () => {
     });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const input = screen.getByLabelText("Verification code");
     await user.type(input, "123456");
@@ -126,7 +141,7 @@ describe("VerifyCodePage", () => {
     verifyCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const input = screen.getByLabelText("Verification code");
     await user.type(input, "654321");
@@ -134,18 +149,17 @@ describe("VerifyCodePage", () => {
     const button = screen.getByRole("button", { name: /verify/i });
     await user.click(button);
 
-    await screen.findByText("Phone verified!");
     expect(verifyCode).toHaveBeenCalledWith("+12125551234", "654321");
   });
 
   it("shows resend cooldown timer initially", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     expect(screen.getByText("Resend code in 30s")).toBeInTheDocument();
   });
 
   it("counts down the resend cooldown timer", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     act(() => {
       jest.advanceTimersByTime(5000);
@@ -155,7 +169,7 @@ describe("VerifyCodePage", () => {
   });
 
   it("shows resend button after cooldown expires", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     act(() => {
       jest.advanceTimersByTime(30000);
@@ -170,7 +184,7 @@ describe("VerifyCodePage", () => {
     resendCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     act(() => {
       jest.advanceTimersByTime(30000);
@@ -187,7 +201,7 @@ describe("VerifyCodePage", () => {
     resendCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     act(() => {
       jest.advanceTimersByTime(30000);
@@ -207,7 +221,7 @@ describe("VerifyCodePage", () => {
     });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     act(() => {
       jest.advanceTimersByTime(30000);
@@ -222,7 +236,7 @@ describe("VerifyCodePage", () => {
   });
 
   it("renders change phone number link", () => {
-    render(<VerifyCodePage />);
+    renderWithProviders(<VerifyCodePage />);
 
     const link = screen.getByRole("link", { name: /change phone number/i });
     expect(link).toHaveAttribute("href", "/verify-phone");

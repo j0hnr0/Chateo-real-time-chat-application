@@ -1,37 +1,39 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
 import { sendVerificationCode } from "./actions";
 
+interface PhoneFormValues {
+  phoneNumber: string;
+}
+
 export default function VerifyPhonePage() {
-  const [phoneNumber, setPhoneNumber] = useState("");
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setMessage(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<PhoneFormValues>({
+    defaultValues: { phoneNumber: "" },
+  });
 
-    startTransition(async () => {
-      const result = await sendVerificationCode(phoneNumber);
-
+  const mutation = useMutation({
+    mutationFn: (data: PhoneFormValues) =>
+      sendVerificationCode(data.phoneNumber),
+    onSuccess: (result, variables) => {
       if (result.success) {
         router.push(
-          `/verify-code?phone=${encodeURIComponent(phoneNumber)}`
+          `/verify-code?phone=${encodeURIComponent(variables.phoneNumber)}`
         );
-      } else {
-        setMessage({
-          type: "error",
-          text: result.error ?? "Something went wrong.",
-        });
       }
-    });
-  }
+    },
+  });
+
+  const serverError =
+    mutation.data && !mutation.data.success ? mutation.data.error : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -40,7 +42,10 @@ export default function VerifyPhonePage() {
           Enter your phone number
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit((data) => mutation.mutate(data))}
+          className="space-y-4"
+        >
           <div>
             <label htmlFor="phone" className="mb-1 block text-sm font-medium">
               Phone number
@@ -48,12 +53,11 @@ export default function VerifyPhonePage() {
             <input
               id="phone"
               type="tel"
-              name="phoneNumber"
               placeholder="+1 (555) 000-0000"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              required
               autoComplete="tel"
+              {...register("phoneNumber", {
+                required: "Phone number is required.",
+              })}
               className="w-full rounded-lg border border-gray-300 px-4 py-3
                          text-base placeholder:text-gray-400
                          focus-visible:outline-none focus-visible:ring-2
@@ -61,24 +65,22 @@ export default function VerifyPhonePage() {
                          dark:border-gray-700 dark:bg-gray-900"
               style={{ touchAction: "manipulation" }}
             />
+            {errors.phoneNumber && (
+              <p role="alert" className="mt-1 text-sm text-red-500">
+                {errors.phoneNumber.message}
+              </p>
+            )}
           </div>
 
-          {message && (
-            <p
-              role="alert"
-              className={
-                message.type === "error"
-                  ? "text-sm text-red-500"
-                  : "text-sm text-green-600"
-              }
-            >
-              {message.text}
+          {serverError && (
+            <p role="alert" className="text-sm text-red-500">
+              {serverError}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={mutation.isPending}
             aria-label="Send verification code"
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-base
                        font-medium text-white
@@ -88,7 +90,7 @@ export default function VerifyPhonePage() {
                        disabled:cursor-not-allowed disabled:opacity-50"
             style={{ touchAction: "manipulation" }}
           >
-            {isPending ? "Sending..." : "Send Code"}
+            {mutation.isPending ? "Sending..." : "Send Code"}
           </button>
         </form>
       </div>

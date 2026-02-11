@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import VerifyPhonePage from "../page";
 
 const mockPush = jest.fn();
@@ -15,9 +16,22 @@ const { sendVerificationCode } = jest.requireMock("../actions") as {
   sendVerificationCode: jest.Mock;
 };
 
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+}
+
 describe("VerifyPhonePage", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders phone input and submit button", () => {
-    render(<VerifyPhonePage />);
+    renderWithProviders(<VerifyPhonePage />);
 
     expect(screen.getByLabelText("Phone number")).toBeInTheDocument();
     expect(
@@ -27,7 +41,7 @@ describe("VerifyPhonePage", () => {
 
   it("updates phone input value on typing", async () => {
     const user = userEvent.setup();
-    render(<VerifyPhonePage />);
+    renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
     await user.type(input, "+12125551234");
@@ -42,7 +56,7 @@ describe("VerifyPhonePage", () => {
     });
 
     const user = userEvent.setup();
-    render(<VerifyPhonePage />);
+    renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
     await user.type(input, "bad");
@@ -59,7 +73,7 @@ describe("VerifyPhonePage", () => {
     sendVerificationCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup();
-    render(<VerifyPhonePage />);
+    renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
     await user.type(input, "+12125551234");
@@ -82,7 +96,7 @@ describe("VerifyPhonePage", () => {
     );
 
     const user = userEvent.setup();
-    render(<VerifyPhonePage />);
+    renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
     await user.type(input, "+12125551234");

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { verifyCode, resendCode } from "./actions";
 
@@ -13,19 +15,59 @@ function maskPhone(phone: string): string {
   return `${start}${masked}${end}`;
 }
 
+interface CodeFormValues {
+  code: string;
+}
+
 export default function VerifyCodePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const phoneNumber = searchParams.get("phone") ?? "";
 
-  const [code, setCode] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const [isResending, startResendTransition] = useTransition();
-  const [message, setMessage] = useState<{
+  const [resendMessage, setResendMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
   const [resendCooldown, setResendCooldown] = useState(30);
   const timerRef = useRef<ReturnType<typeof setInterval>>(null);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+  } = useForm<CodeFormValues>({
+    defaultValues: { code: "" },
+  });
+
+  const code = watch("code");
+
+  const verifyMutation = useMutation({
+    mutationFn: (data: CodeFormValues) => verifyCode(phoneNumber, data.code),
+    onSuccess: (result) => {
+      if (result.success) {
+        router.push(
+          `/setup-profile?phone=${encodeURIComponent(phoneNumber)}`
+        );
+      }
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: () => resendCode(phoneNumber),
+    onSuccess: (result) => {
+      if (result.success) {
+        setResendMessage({ type: "success", text: "New code sent!" });
+        setResendCooldown(30);
+        setValue("code", "");
+      } else {
+        setResendMessage({
+          type: "error",
+          text: result.error ?? "Failed to resend.",
+        });
+      }
+    },
+  });
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -63,38 +105,10 @@ export default function VerifyCodePage() {
     );
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setMessage(null);
-    startTransition(async () => {
-      const result = await verifyCode(phoneNumber, code);
-      if (result.success) {
-        setMessage({ type: "success", text: "Phone verified!" });
-      } else {
-        setMessage({
-          type: "error",
-          text: result.error ?? "Verification failed.",
-        });
-      }
-    });
-  }
-
-  function handleResend() {
-    setMessage(null);
-    startResendTransition(async () => {
-      const result = await resendCode(phoneNumber);
-      if (result.success) {
-        setMessage({ type: "success", text: "New code sent!" });
-        setResendCooldown(30);
-        setCode("");
-      } else {
-        setMessage({
-          type: "error",
-          text: result.error ?? "Failed to resend.",
-        });
-      }
-    });
-  }
+  const verifyError =
+    verifyMutation.data && !verifyMutation.data.success
+      ? verifyMutation.data.error
+      : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -117,7 +131,13 @@ export default function VerifyCodePage() {
           We sent a code to {maskPhone(phoneNumber)}
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit((data) => {
+            setResendMessage(null);
+            verifyMutation.mutate(data);
+          })}
+          className="space-y-4"
+        >
           <div>
             <label htmlFor="code" className="mb-1 block text-sm font-medium">
               Verification code
@@ -130,12 +150,14 @@ export default function VerifyCodePage() {
               pattern="[0-9]{6}"
               maxLength={6}
               placeholder="000000"
-              value={code}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "");
-                setCode(val);
-              }}
-              required
+              {...register("code", {
+                required: true,
+                pattern: /^[0-9]{6}$/,
+                onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setValue("code", val);
+                },
+              })}
               className="w-full rounded-lg border border-gray-300 px-4 py-3
                          text-center text-2xl tracking-[0.5em]
                          placeholder:text-gray-400 placeholder:tracking-[0.5em]
@@ -146,22 +168,28 @@ export default function VerifyCodePage() {
             />
           </div>
 
-          {message && (
+          {verifyError && (
+            <p role="alert" className="text-sm text-red-500">
+              {verifyError}
+            </p>
+          )}
+
+          {resendMessage && (
             <p
               role="alert"
               className={
-                message.type === "error"
+                resendMessage.type === "error"
                   ? "text-sm text-red-500"
                   : "text-sm text-green-600"
               }
             >
-              {message.text}
+              {resendMessage.text}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={isPending || code.length !== 6}
+            disabled={verifyMutation.isPending || code.length !== 6}
             aria-label="Verify code"
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-base
                        font-medium text-white
@@ -171,7 +199,7 @@ export default function VerifyCodePage() {
                        disabled:cursor-not-allowed disabled:opacity-50"
             style={{ touchAction: "manipulation" }}
           >
-            {isPending ? "Verifying..." : "Verify"}
+            {verifyMutation.isPending ? "Verifying..." : "Verify"}
           </button>
         </form>
 
@@ -183,15 +211,18 @@ export default function VerifyCodePage() {
           ) : (
             <button
               type="button"
-              onClick={handleResend}
-              disabled={isResending}
+              onClick={() => {
+                setResendMessage(null);
+                resendMutation.mutate();
+              }}
+              disabled={resendMutation.isPending}
               className="text-blue-600 hover:underline
                          focus-visible:outline-none focus-visible:ring-2
                          focus-visible:ring-blue-500 dark:text-blue-400
                          disabled:opacity-50"
               style={{ touchAction: "manipulation" }}
             >
-              {isResending ? "Sending..." : "Resend code"}
+              {resendMutation.isPending ? "Sending..." : "Resend code"}
             </button>
           )}
         </div>
