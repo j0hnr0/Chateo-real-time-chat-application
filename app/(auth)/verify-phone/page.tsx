@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { sendVerificationCode } from "./actions";
 
 export default function VerifyPhonePage() {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -19,10 +21,9 @@ export default function VerifyPhonePage() {
       const result = await sendVerificationCode(phoneNumber);
 
       if (result.success) {
-        setMessage({
-          type: "success",
-          text: "Verification code sent!",
-        });
+        router.push(
+          `/verify-code?phone=${encodeURIComponent(phoneNumber)}`
+        );
       } else {
         setMessage({
           type: "error",

@@ -4,7 +4,7 @@ import nextJest from "next/jest.js";
 const createJestConfig = nextJest({ dir: "./" });
 
 const config: Config.InitialOptions = {
-  testEnvironment: "node",
+  testEnvironment: "jsdom",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },

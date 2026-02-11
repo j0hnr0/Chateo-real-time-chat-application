@@ -11,7 +11,10 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - `npm run dev` — start dev server (http://localhost:3000)
 - `npm run build` — production build
 - `npm run start` — start production server
-- `npm run lint` — run ESLint (no test framework configured yet)
+- `npm run lint` — run ESLint
+- `npm run test` — run all tests
+- `npm run test:watch` — run tests in watch mode
+- `npx jest --testPathPatterns="<pattern>"` — run specific test file (e.g., `"actions.test"`, `"page.test"`)
 
 ## Tech Stack
 
@@ -20,6 +23,7 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - **Tailwind CSS v4** via PostCSS
 - **Prisma 7** ORM + **PostgreSQL**
 - **Geist** font family (Sans + Mono)
+- **Jest 30** + **Testing Library** (React, jest-dom, user-event) with jsdom environment
 
 ## Architecture
 
