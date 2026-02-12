@@ -100,8 +100,8 @@ describe("VerifyCodePage", () => {
     expect(button).toBeEnabled();
   });
 
-  it("redirects to setup-profile on successful verification", async () => {
-    verifyCode.mockResolvedValue({ success: true });
+  it("redirects to setup-profile for new user verification", async () => {
+    verifyCode.mockResolvedValue({ success: true, existingUser: false });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderWithProviders(<VerifyCodePage />);
@@ -115,6 +115,21 @@ describe("VerifyCodePage", () => {
     expect(mockPush).toHaveBeenCalledWith(
       "/setup-profile?phone=%2B12125551234"
     );
+  });
+
+  it("redirects to home for existing user verification", async () => {
+    verifyCode.mockResolvedValue({ success: true, existingUser: true });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithProviders(<VerifyCodePage />);
+
+    const input = screen.getByLabelText("Verification code");
+    await user.type(input, "123456");
+
+    const button = screen.getByRole("button", { name: /verify/i });
+    await user.click(button);
+
+    expect(mockPush).toHaveBeenCalledWith("/");
   });
 
   it("displays error message on failed verification", async () => {
@@ -138,7 +153,7 @@ describe("VerifyCodePage", () => {
   });
 
   it("calls verifyCode with phone number and code", async () => {
-    verifyCode.mockResolvedValue({ success: true });
+    verifyCode.mockResolvedValue({ success: true, existingUser: false });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderWithProviders(<VerifyCodePage />);

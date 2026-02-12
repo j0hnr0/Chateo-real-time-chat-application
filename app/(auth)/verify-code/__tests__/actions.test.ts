@@ -8,12 +8,19 @@ jest.mock("@/lib/prisma", () => ({
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   },
 }));
 
 jest.mock("@/lib/twilio", () => ({
   getTwilio: jest.fn(),
   getVerifyServiceSid: jest.fn(() => "VA_test_sid"),
+}));
+
+jest.mock("@/lib/session", () => ({
+  createSession: jest.fn(),
 }));
 
 const { prisma } = jest.requireMock("@/lib/prisma") as {
@@ -24,7 +31,14 @@ const { prisma } = jest.requireMock("@/lib/prisma") as {
       findFirst: jest.Mock;
       update: jest.Mock;
     };
+    user: {
+      findUnique: jest.Mock;
+    };
   };
+};
+
+const { createSession } = jest.requireMock("@/lib/session") as {
+  createSession: jest.Mock;
 };
 
 const { getTwilio } = jest.requireMock("@/lib/twilio") as {
@@ -51,6 +65,8 @@ describe("verifyCode", () => {
     mockCheckCreate.mockResolvedValue({ status: "approved" });
     prisma.verificationCode.findFirst.mockResolvedValue({ id: "vc-1" });
     prisma.verificationCode.update.mockResolvedValue({});
+    prisma.user.findUnique.mockResolvedValue(null);
+    createSession.mockResolvedValue(undefined);
   });
 
   it("returns error for non-string phoneNumber", async () => {
@@ -89,10 +105,10 @@ describe("verifyCode", () => {
     expect(prisma.verificationCode.findFirst).not.toHaveBeenCalled();
   });
 
-  it("marks verification record as verified on success", async () => {
+  it("marks verification record as verified and returns existingUser false for new user", async () => {
     const result = await verifyCode("+12125551234", "123456");
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, existingUser: false });
     expect(mockCheckCreate).toHaveBeenCalledWith({
       to: "+12125551234",
       code: "123456",
@@ -109,6 +125,16 @@ describe("verifyCode", () => {
       where: { id: "vc-1" },
       data: { verified: true },
     });
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it("creates session and returns existingUser true for returning user", async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const result = await verifyCode("+12125551234", "123456");
+
+    expect(result).toEqual({ success: true, existingUser: true });
+    expect(createSession).toHaveBeenCalledWith("user-1");
   });
 
   it("succeeds without updating when no DB record found", async () => {
@@ -116,14 +142,14 @@ describe("verifyCode", () => {
 
     const result = await verifyCode("+12125551234", "123456");
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, existingUser: false });
     expect(prisma.verificationCode.update).not.toHaveBeenCalled();
   });
 
   it("trims whitespace from inputs", async () => {
     const result = await verifyCode("  +12125551234  ", "  123456  ");
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, existingUser: false });
     expect(mockCheckCreate).toHaveBeenCalledWith({
       to: "+12125551234",
       code: "123456",
