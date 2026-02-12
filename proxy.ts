@@ -3,7 +3,7 @@ import { verifyToken } from "@/lib/session";
 
 const PUBLIC_PATHS = ["/verify-phone", "/verify-code", "/setup-profile"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some(

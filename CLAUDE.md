@@ -39,7 +39,7 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - `prisma/schema.prisma` — data model (no `url` in datasource block — Prisma 7 requirement)
 - `lib/prisma.ts` — Prisma client singleton (prevents multiple instances in dev)
 - `lib/session.ts` — JWT session utilities (`createSession`, `getSessionUserId`, `verifyToken`, `clearSession`) using `jose`; stores signed JWT in httpOnly cookie `chateo-session`
-- `middleware.ts` — route protection; redirects unauthenticated users to `/verify-phone`, redirects authenticated users away from auth pages
+- `proxy.ts` — route protection (Next.js 16 proxy convention); redirects unauthenticated users to `/verify-phone`, redirects authenticated users away from auth pages
 - Place all related files (components, hooks, lib, types) inside the route folder they belong to.
 - Only promote to root-level components/, lib/, hooks/, or types/ when shared across multiple routes.
 - Never import from another route's internal files — promote to shared instead.
