@@ -1,5 +1,9 @@
 import { createProfile } from "../actions";
 
+jest.mock("@/lib/session", () => ({
+  createSession: jest.fn(),
+}));
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     verificationCode: {
@@ -113,14 +117,18 @@ describe("createProfile", () => {
     });
   });
 
-  it("creates user on success", async () => {
+  it("creates user on success and sets session", async () => {
+    const { createSession } = jest.requireMock("@/lib/session") as {
+      createSession: jest.Mock;
+    };
+
     const result = await createProfile({
       phoneNumber: "+12125551234",
       firstName: "John",
       lastName: "Doe",
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, userId: "user-1" });
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
         phoneNumber: "+12125551234",
@@ -129,6 +137,7 @@ describe("createProfile", () => {
       },
       select: { id: true },
     });
+    expect(createSession).toHaveBeenCalledWith("user-1");
   });
 
   it("creates user without last name", async () => {
@@ -137,7 +146,7 @@ describe("createProfile", () => {
       firstName: "John",
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, userId: "user-1" });
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
         phoneNumber: "+12125551234",
@@ -155,7 +164,7 @@ describe("createProfile", () => {
       lastName: "  Doe  ",
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, userId: "user-1" });
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
         phoneNumber: "+12125551234",
