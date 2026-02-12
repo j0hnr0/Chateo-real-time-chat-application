@@ -24,5 +24,12 @@
 - Use `act(() => { jest.advanceTimersByTime(ms) })` for timer-based UI changes
 - Worker force-exit warning is benign with fake timers -- no action needed
 
+### Async Server Component Tests (`app/__tests__/page.test.tsx`)
+- Call component as function: `const jsx = await HomePage()` then `render(jsx)`
+- Mock `next/navigation` redirect to throw with `digest` property: `NEXT_REDIRECT;/path`
+- To assert redirect: catch the error and parse `error.digest` for the URL
+- Mock `@/lib/session` (`getSessionUserId`) and `@/lib/prisma` at module level
+- Images with `alt=""` get role `presentation`, not `img` -- use `getByRole("presentation")`
+
 ## Validation helpers
 - `@/lib/validation.ts`: `isValidE164` (E.164 regex) and `isValidOtp` (6-digit numeric)

@@ -25,6 +25,7 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - **Geist** font family (Sans + Mono)
 - **React Hook Form** for client-side form state and validation
 - **TanStack React Query** for server state management and data fetching
+- **jose** for JWT-based session (signed tokens in httpOnly cookies)
 - **Jest 30** + **Testing Library** (React, jest-dom, user-event) with jsdom environment
 
 ## Architecture
@@ -37,6 +38,8 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - `prisma.config.ts` — Prisma 7 config (datasource URL, migration path); DB URL lives here, **not** in schema.prisma
 - `prisma/schema.prisma` — data model (no `url` in datasource block — Prisma 7 requirement)
 - `lib/prisma.ts` — Prisma client singleton (prevents multiple instances in dev)
+- `lib/session.ts` — JWT session utilities (`createSession`, `getSessionUserId`, `verifyToken`, `clearSession`) using `jose`; stores signed JWT in httpOnly cookie `chateo-session`
+- `middleware.ts` — route protection; redirects unauthenticated users to `/verify-phone`, redirects authenticated users away from auth pages
 - Place all related files (components, hooks, lib, types) inside the route folder they belong to.
 - Only promote to root-level components/, lib/, hooks/, or types/ when shared across multiple routes.
 - Never import from another route's internal files — promote to shared instead.
@@ -121,6 +124,16 @@ Chateo — a real-time 1-on-1 chat application with phone number authentication,
 - **Use `include` deliberately** — don't over-fetch relations; only include what the current view needs
 - **Batch writes with `createMany`/`updateMany`** — avoid loops of individual `create`/`update` calls
 - **Add `@@index` on columns used for filtering/sorting** — e.g., `Message.createdAt` for chronological queries, `Story.expiresAt` for expiry checks
+
+### Authentication & Session
+
+- **JWT session** via `jose` — signed HS256 tokens stored in httpOnly cookie (`chateo-session`)
+- `lib/session.ts` is the single source of truth for session operations
+- Server actions that create/log in users must call `createSession(userId)` to set the cookie
+- Server components read the session with `getSessionUserId()` — returns `userId` or `null`
+- Middleware uses `verifyToken(token)` directly (middleware can't use `cookies()` from `next/headers`)
+- `JWT_SECRET` env var is required — used to sign/verify tokens
+- Public (unauthenticated) routes: `/verify-phone`, `/verify-code`, `/setup-profile`
 
 ### Security
 
