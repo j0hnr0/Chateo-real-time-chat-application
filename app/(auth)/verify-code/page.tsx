@@ -46,9 +46,13 @@ export default function VerifyCodePage() {
     mutationFn: (data: CodeFormValues) => verifyCode(phoneNumber, data.code),
     onSuccess: (result) => {
       if (result.success) {
-        router.push(
-          `/setup-profile?phone=${encodeURIComponent(phoneNumber)}`
-        );
+        if (result.existingUser) {
+          router.push("/");
+        } else {
+          router.push(
+            `/setup-profile?phone=${encodeURIComponent(phoneNumber)}`
+          );
+        }
       }
     },
   });

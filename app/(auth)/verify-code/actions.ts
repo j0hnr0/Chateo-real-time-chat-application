@@ -1,12 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { createSession } from "@/lib/session";
 import { getTwilio, getVerifyServiceSid } from "@/lib/twilio";
 import { isValidE164, isValidOtp } from "@/lib/validation";
 
 interface VerifyCodeResult {
   success: boolean;
   error?: string;
+  existingUser?: boolean;
 }
 
 export async function verifyCode(
@@ -60,7 +62,17 @@ export async function verifyCode(
       });
     }
 
-    return { success: true };
+    const existingUser = await prisma.user.findUnique({
+      where: { phoneNumber: trimmedPhone },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      await createSession(existingUser.id);
+      return { success: true, existingUser: true };
+    }
+
+    return { success: true, existingUser: false };
   } catch (error) {
     console.error("verifyCode failed:", error);
     return {
