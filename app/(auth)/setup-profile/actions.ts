@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { createSession } from "@/lib/session";
 import { isValidE164 } from "@/lib/validation";
 
 interface CreateProfileInput {
@@ -12,6 +13,7 @@ interface CreateProfileInput {
 interface CreateProfileResult {
   success: boolean;
   error?: string;
+  userId?: string;
 }
 
 export async function createProfile(
@@ -65,7 +67,7 @@ export async function createProfile(
       return { success: false, error: "Account already exists." };
     }
 
-    await prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         phoneNumber: trimmedPhone,
         firstName: trimmedFirst,
@@ -74,7 +76,9 @@ export async function createProfile(
       select: { id: true },
     });
 
-    return { success: true };
+    await createSession(createdUser.id);
+
+    return { success: true, userId: createdUser.id };
   } catch (error) {
     console.error("createProfile failed:", error);
     return {
