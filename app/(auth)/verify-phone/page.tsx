@@ -47,7 +47,7 @@ export default function VerifyPhonePage() {
           <h1 className="text-2xl font-bold leading-none text-[#0F1828] dark:text-white">
             Enter Your Phone Number
           </h1>
-          <p className="text-sm leading-6 text-[#0F1828] dark:text-white/60">
+          <p className="text-sm leading-5 text-[#ADB5BD] dark:text-white/60">
             Please confirm your country code and enter your phone number
           </p>
         </div>
@@ -57,24 +57,26 @@ export default function VerifyPhonePage() {
           className="flex flex-col gap-8"
         >
           <div>
-            <div className="flex gap-2">
-              <div
-                className="flex h-10 w-[79px] shrink-0 items-center gap-2 rounded-[4px]
-                           bg-[#F7F7FC] px-2 dark:bg-gray-800"
-              >
+            <div
+              className="flex h-12 items-center rounded-lg bg-[#F7F7FC]
+                         dark:bg-gray-800"
+            >
+              <div className="flex shrink-0 items-center gap-2 px-3">
                 <div
                   className="flex size-6 items-center justify-center overflow-hidden rounded"
                   aria-hidden="true"
                 >
                   <div className="size-full">
-                    <div className="h-1/2 w-full rounded-t-[4px] bg-[#FF0000]" />
-                    <div className="h-1/2 w-full rounded-b-[4px] bg-white" />
+                    <div className="h-1/2 w-full bg-[#FF0000]" />
+                    <div className="h-1/2 w-full bg-white" />
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-[#ADB5BD]">
                   {COUNTRY_CODE}
                 </span>
               </div>
+
+              <div className="h-5 w-px bg-[#ADB5BD]/30" />
 
               <input
                 id="phone"
@@ -85,12 +87,11 @@ export default function VerifyPhonePage() {
                 {...register("phoneNumber", {
                   required: "Phone number is required.",
                 })}
-                className="h-10 min-w-0 flex-1 rounded-[4px] bg-[#F7F7FC] px-2
+                className="h-full min-w-0 flex-1 bg-transparent px-3
                            text-sm font-semibold text-[#0F1828]
                            placeholder:text-[#ADB5BD]
-                           focus-visible:outline-none focus-visible:ring-2
-                           focus-visible:ring-[#002DE3]
-                           dark:bg-gray-800 dark:text-white"
+                           focus-visible:outline-none
+                           dark:text-white"
                 style={{ touchAction: "manipulation" }}
               />
             </div>
