@@ -30,10 +30,11 @@ describe("VerifyPhonePage", () => {
     jest.clearAllMocks();
   });
 
-  it("renders phone input and submit button", () => {
+  it("renders phone input, country code, and submit button", () => {
     renderWithProviders(<VerifyPhonePage />);
 
     expect(screen.getByLabelText("Phone number")).toBeInTheDocument();
+    expect(screen.getByText("+63")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /send/i })
     ).toBeInTheDocument();
@@ -44,9 +45,9 @@ describe("VerifyPhonePage", () => {
     renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
-    await user.type(input, "+12125551234");
+    await user.type(input, "9171234567");
 
-    expect(input).toHaveValue("+12125551234");
+    expect(input).toHaveValue("9171234567");
   });
 
   it("displays error message on failure", async () => {
@@ -64,26 +65,28 @@ describe("VerifyPhonePage", () => {
     const button = screen.getByRole("button", { name: /send/i });
     await user.click(button);
 
+    expect(sendVerificationCode).toHaveBeenCalledWith("+63bad");
     expect(
       await screen.findByText("Invalid phone number format.")
     ).toBeInTheDocument();
   });
 
-  it("redirects to verify-code on success", async () => {
+  it("redirects to verify-code on success with country code prepended", async () => {
     sendVerificationCode.mockResolvedValue({ success: true });
 
     const user = userEvent.setup();
     renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
-    await user.type(input, "+12125551234");
+    await user.type(input, "9171234567");
 
     const button = screen.getByRole("button", { name: /send/i });
     await user.click(button);
 
     await screen.findByLabelText("Phone number");
+    expect(sendVerificationCode).toHaveBeenCalledWith("+639171234567");
     expect(mockPush).toHaveBeenCalledWith(
-      "/verify-code?phone=%2B12125551234"
+      "/verify-code?phone=%2B639171234567"
     );
   });
 
@@ -99,7 +102,7 @@ describe("VerifyPhonePage", () => {
     renderWithProviders(<VerifyPhonePage />);
 
     const input = screen.getByLabelText("Phone number");
-    await user.type(input, "+12125551234");
+    await user.type(input, "9171234567");
 
     const button = screen.getByRole("button", { name: /send/i });
     await user.click(button);
